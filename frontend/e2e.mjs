@@ -4,14 +4,11 @@ import fs from "node:fs/promises";
 const config = process.env.E2E_CONFIG
   ? JSON.parse(await fs.readFile(process.env.E2E_CONFIG, "utf8"))
   : {
-      business: process.env.E2E_BUSINESS,
       email: process.env.E2E_EMAIL,
       password: process.env.E2E_PASSWORD,
     };
 if (!config.password)
-  throw Error(
-    "Defina E2E_BUSINESS, E2E_EMAIL e E2E_PASSWORD para um banco descartável.",
-  );
+  throw Error("Defina E2E_EMAIL e E2E_PASSWORD para um banco descartável.");
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const errors = [];
@@ -26,7 +23,7 @@ async function clickNav(name) {
     .click();
 }
 async function login(email = config.email) {
-  await page.getByLabel("Identificador do negócio").fill(config.business);
+  assert.equal(await page.getByLabel("Identificador do negócio").count(), 0);
   await page.getByLabel("E-mail", { exact: true }).fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(config.password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();

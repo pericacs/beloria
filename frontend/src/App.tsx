@@ -15,12 +15,13 @@ import {
   X,
 } from "lucide-react";
 import { api, setCsrf } from "./api";
-import { User } from "./types";
+import { AuthResult, Selection, User } from "./types";
 import { Home } from "./pages/Home";
 import { Catalog } from "./pages/Catalog";
 import { Attendances } from "./pages/Attendances";
 import { History } from "./pages/History";
 import { Login } from "./pages/Login";
+import { BusinessSelection } from "./pages/BusinessSelection";
 import { Message } from "./components/Common";
 const navigation = [
   ["home", "Visão geral", HomeIcon],
@@ -35,23 +36,27 @@ const navigation = [
 ] as const;
 export default function App() {
   const [user, setUser] = useState<User | null>(null),
+    [selection, setSelection] = useState<Selection | null>(null),
     [loading, setLoading] = useState(true),
     [page, setPage] = useState("home"),
     [mobile, setMobile] = useState(false),
     [error, setError] = useState("");
-  function login(value: User) {
+  function login(value: AuthResult) {
     setCsrf(value.csrf_token);
-    setUser(value);
+    setUser(value.selection_required ? null : value);
+    setSelection(value.selection_required ? value : null);
+    setMobile(false);
     setPage("home");
     setError("");
   }
   useEffect(() => {
-    api<User>("/auth/me")
+    api<AuthResult>("/auth/me")
       .then(login)
       .catch(() => {})
       .finally(() => setLoading(false));
     const expired = () => {
       setUser(null);
+      setSelection(null);
       setCsrf("");
     };
     window.addEventListener("session-expired", expired);
@@ -66,6 +71,7 @@ export default function App() {
     try {
       await api("/auth/logout", "POST");
       setUser(null);
+      setSelection(null);
       setCsrf("");
     } catch (e) {
       setError((e as Error).message);
@@ -76,6 +82,15 @@ export default function App() {
       <div className="app-loading" role="status">
         Carregando Beloria…
       </div>
+    );
+  if (selection)
+    return (
+      <BusinessSelection
+        session={selection}
+        selected={login}
+        logout={logout}
+        logoutError={error}
+      />
     );
   if (!user) return <Login loggedIn={login} />;
   const items = navigation.filter(
@@ -113,6 +128,21 @@ export default function App() {
           <div>
             <strong>{user.business_name}</strong>
             <small>Seu espaço de gestão</small>
+            {user.businesses.length > 1 && (
+              <button
+                className="switch-business"
+                onClick={() =>
+                  setSelection({
+                    selection_required: true,
+                    email: user.email,
+                    csrf_token: user.csrf_token,
+                    businesses: user.businesses,
+                  })
+                }
+              >
+                Trocar negócio
+              </button>
+            )}
           </div>
         </div>
         <p className="nav-label">PRINCIPAL</p>
@@ -175,7 +205,7 @@ export default function App() {
             </button>
           </div>
         </header>
-        <main id="main-content" className="content">
+        <main key={user.id} id="main-content" className="content">
           <Message error={error} />
           {page === "home" ? (
             <Home user={user} navigate={navigate} />

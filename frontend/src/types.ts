@@ -1,4 +1,18 @@
+export type BusinessChoice = {
+  membership_id: number;
+  name: string;
+  role: "gestor" | "profissional";
+};
+export type Selection = {
+  selection_required: true;
+  email: string;
+  csrf_token: string;
+  businesses: BusinessChoice[];
+};
+export type AuthResult = User | Selection;
 export type User = {
+  selection_required: false;
+  businesses: BusinessChoice[];
   id: number;
   email: string;
   role: "gestor" | "profissional";

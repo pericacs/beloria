@@ -1,9 +1,9 @@
 import { FormEvent, useState } from "react";
 import { ArrowRight, Flower2, ShieldCheck } from "lucide-react";
 import { api } from "../api";
-import { User } from "../types";
+import { AuthResult } from "../types";
 import { Message } from "../components/Common";
-export function Login({ loggedIn }: { loggedIn: (user: User) => void }) {
+export function Login({ loggedIn }: { loggedIn: (user: AuthResult) => void }) {
   const [error, setError] = useState(""),
     [loading, setLoading] = useState(false);
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -13,8 +13,7 @@ export function Login({ loggedIn }: { loggedIn: (user: User) => void }) {
     setError("");
     try {
       loggedIn(
-        await api<User>("/auth/login", "POST", {
-          business: form.get("business"),
+        await api<AuthResult>("/auth/login", "POST", {
           email: form.get("email"),
           password: form.get("password"),
         }),
@@ -61,19 +60,9 @@ export function Login({ loggedIn }: { loggedIn: (user: User) => void }) {
           <form onSubmit={submit}>
             <Message error={error} />
             <label>
-              Identificador do negócio
-              <input
-                name="business"
-                required
-                autoFocus
-                autoComplete="organization"
-                placeholder="Ex.: meu-salao"
-                maxLength={80}
-              />
-            </label>
-            <label>
               E-mail
               <input
+                autoFocus
                 name="email"
                 type="email"
                 required

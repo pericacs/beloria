@@ -1147,3 +1147,31 @@ dialog::backdrop {
     scroll-behavior: auto !important;
   }
 }
+.business-selection {
+  min-height: 100vh;
+}
+.business-selection h1 {
+  margin-top: 24px;
+}
+.business-choices {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0;
+}
+.business-choices button {
+  justify-content: space-between;
+  padding: 18px;
+  white-space: normal;
+  text-align: left;
+}
+.business-choices span {
+  font-size: 12px;
+  font-weight: 400;
+}
+.switch-business {
+  color: #d6e2d9;
+  background: transparent;
+  padding: 6px 0;
+  font-size: 11px;
+  text-decoration: underline;
+}
