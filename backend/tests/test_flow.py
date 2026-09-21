@@ -172,3 +172,10 @@ def test_large_payout_total_uses_bigint(seeded):
     response=a.post('/api/payouts',json={'attendance_ids':[row['id'] for row in rows],'reference':'large batch'},headers={'Idempotency-Key':secrets.token_hex(12)})
     assert response.status_code==201, response.text
     assert response.json()['total_cents']==2_200_000_000
+
+def test_password_whitespace_is_preserved():
+    from app.schemas import LoginInput, ProfessionalInput
+    secret='  secret with spaces  '
+    assert LoginInput(business='alpha',email='x@example.com',password=secret).password==secret
+    professional=ProfessionalInput(name='Ana',commission_bps=0,engagement='autonomo',cpf='52998224725',specialty_ids=[1],email='ana@example.com',password=secret)
+    assert professional.password==secret

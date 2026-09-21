@@ -1,5 +1,5 @@
-from typing import Literal
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from typing import Annotated, Literal
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator, model_validator
 from .documents import normalize_document, valid_cnpj, valid_cpf
 
 class Input(BaseModel):
@@ -8,7 +8,7 @@ class Input(BaseModel):
 class LoginInput(Input):
     business: str = Field(min_length=1, max_length=80)
     email: EmailStr
-    password: str = Field(min_length=1, max_length=128)
+    password: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=128)
 
 class SpecialtyInput(Input):
     name: str = Field(min_length=1, max_length=120)
@@ -30,7 +30,7 @@ class ProfessionalInput(ClientInput):
     cnpj: str | None = None
     specialty_ids: list[int] = Field(min_length=1, max_length=100)
     email: EmailStr
-    password: str | None = Field(default=None, min_length=12, max_length=128)
+    password: Annotated[str, StringConstraints(strip_whitespace=False)] | None = Field(default=None, min_length=12, max_length=128)
 
     @field_validator("cpf", "cnpj", mode="before")
     @classmethod
@@ -40,13 +40,13 @@ class ProfessionalInput(ClientInput):
     @model_validator(mode="after")
     def documents(self):
         if self.cpf and not valid_cpf(self.cpf):
-            raise ValueError("CPF inválido")
+            raise ValueError("CPF invÃ¡lido")
         if self.cnpj and not valid_cnpj(self.cnpj):
-            raise ValueError("CNPJ inválido")
+            raise ValueError("CNPJ invÃ¡lido")
         if self.engagement == "MEI" and not self.cnpj:
-            raise ValueError("CNPJ obrigatório para MEI")
+            raise ValueError("CNPJ obrigatÃ³rio para MEI")
         if self.engagement != "MEI" and not self.cpf:
-            raise ValueError("CPF obrigatório para autônomo ou CLT")
+            raise ValueError("CPF obrigatÃ³rio para autÃ´nomo ou CLT")
         self.specialty_ids = sorted(set(self.specialty_ids))
         return self
 
@@ -63,7 +63,7 @@ class ReviewInput(Input):
     @model_validator(mode="after")
     def reason_required(self):
         if self.decision == "rejected" and not self.reason:
-            raise ValueError("Informe o motivo da rejeição")
+            raise ValueError("Informe o motivo da rejeiÃ§Ã£o")
         return self
 
 class PayoutInput(Input):
