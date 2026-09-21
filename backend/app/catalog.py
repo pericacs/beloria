@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, select
-from .auth import current_user, hasher, manager
+from .auth import current_user, manager
+from .accounts import create_identity, change_credentials
 from .common import audit, owned, page, record
 from .db import get_db
-from .models import Client, Professional, ProfessionalSpecialty, Service, Specialty, User
+from .models import Client, Professional, ProfessionalSpecialty, Service, Specialty, User, Identity
 from .schemas import ClientInput, ProfessionalInput, ServiceInput, SpecialtyInput
 
 router = APIRouter(tags=["Cadastros"])
@@ -12,7 +13,7 @@ def professional_record(db, row, user):
     data = record(row)
     data["specialty_ids"] = list(db.scalars(select(ProfessionalSpecialty.specialty_id).where(ProfessionalSpecialty.business_id == user.business_id, ProfessionalSpecialty.professional_id == row.id)))
     account = db.scalar(select(User).where(User.business_id == user.business_id, User.professional_id == row.id))
-    data["email"] = account.email if account else ""
+    data["email"] = db.get(Identity, account.identity_id).email if account else ""
     return data
 
 @router.get("/professionals")
@@ -32,18 +33,18 @@ def save_professional(payload, db, user, row=None):
         row = Professional(business_id=user.business_id, **values)
         db.add(row)
         db.flush()
-        account = User(business_id=user.business_id, professional_id=row.id, role="profissional", email=str(payload.email).lower(), password_hash=hasher.hash(payload.password), active=payload.active)
+        identity = create_identity(db, str(payload.email), payload.password)
+        account = User(identity_id=identity.id, business_id=user.business_id, professional_id=row.id, role="profissional", email=identity.email, password_hash=identity.password_hash, active=payload.active)
         db.add(account)
         action = "created"
     else:
         for key, value in values.items():
             setattr(row, key, value)
         account = db.scalar(select(User).where(User.business_id == user.business_id, User.professional_id == row.id).with_for_update())
-        account.email, account.active = str(payload.email).lower(), payload.active
-        if payload.password:
-            account.password_hash = hasher.hash(payload.password)
-            from .models import AuthSession
-            db.execute(delete(AuthSession).where(AuthSession.user_id == account.id))
+        identity = db.scalar(select(Identity).where(Identity.id == account.identity_id).with_for_update())
+        account.active = payload.active
+        if str(payload.email).lower() != identity.email or payload.password:
+            change_credentials(db, identity, str(payload.email), payload.password, tenant_manager=True)
         action = "updated"
     db.execute(delete(ProfessionalSpecialty).where(ProfessionalSpecialty.business_id == user.business_id, ProfessionalSpecialty.professional_id == row.id))
     for specialty_id in payload.specialty_ids:

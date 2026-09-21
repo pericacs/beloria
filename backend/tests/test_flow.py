@@ -15,17 +15,17 @@ def test_sessions_csrf_logout_and_invalid_password(setup):
     client=setup['alpha']
     response=client.get('/api/auth/me')
     assert response.json()['role']=='gestor'
-    assert 'HttpOnly' in setup['login']().post('/api/auth/login',json={'business':'alpha','email':'gestor@example.com','password':setup['password']}).headers['set-cookie']
+    assert 'HttpOnly' in setup['login']().post('/api/auth/login',json={'email':'gestor@example.com','password':setup['password']}).headers['set-cookie']
     assert client.post('/api/clients',json={'name':'X'},headers={'X-CSRF-Token':''}).status_code==403
     assert client.post('/api/auth/logout').status_code==204
     assert client.get('/api/auth/me').status_code==401
-    assert TestClient(app).post('/api/auth/login',json={'business':'alpha','email':'gestor@example.com','password':'invalid'}).status_code==401
+    assert TestClient(app).post('/api/auth/login',json={'email':'gestor@example.com','password':'invalid'}).status_code==401
 
 def test_throttle(setup):
     client=TestClient(app)
     for _ in range(10):
-        assert client.post('/api/auth/login',json={'business':'none','email':'none@example.com','password':'bad'}).status_code==401
-    assert client.post('/api/auth/login',json={'business':'none','email':'none@example.com','password':'bad'}).status_code==429
+        assert client.post('/api/auth/login',json={'email':'none@example.com','password':'bad'}).status_code==401
+    assert client.post('/api/auth/login',json={'email':'none@example.com','password':'bad'}).status_code==429
 
 def test_tenant_isolation_all_relationships(seeded):
     a,b=seeded['alpha'],seeded['beta']
@@ -176,7 +176,7 @@ def test_large_payout_total_uses_bigint(seeded):
 def test_password_whitespace_is_preserved():
     from app.schemas import LoginInput, ProfessionalInput
     secret='  secret with spaces  '
-    assert LoginInput(business='alpha',email='x@example.com',password=secret).password==secret
+    assert LoginInput(email='x@example.com',password=secret).password==secret
     professional=ProfessionalInput(name='Ana',commission_bps=0,engagement='autonomo',cpf='52998224725',specialty_ids=[1],email='ana@example.com',password=secret)
     assert professional.password==secret
 
@@ -187,6 +187,6 @@ def test_administrative_command_creates_manager_without_default_password(monkeyp
     monkeypatch.setattr(sys,'argv',['beloria','--business','cli-business','--name','Negócio CLI','--email','admin@example.com'])
     monkeypatch.setattr('getpass.getpass',lambda prompt:secret)
     main()
-    response=TestClient(app).post('/api/auth/login',json={'business':'cli-business','email':'admin@example.com','password':secret})
+    response=TestClient(app).post('/api/auth/login',json={'email':'admin@example.com','password':secret})
     assert response.status_code==200
     assert response.json()['role']=='gestor'

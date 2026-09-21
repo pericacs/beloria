@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, ForeignKeyConstraint, Integer, JSON, String, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, ForeignKeyConstraint, Integer, JSON, String, UniqueConstraint, Index, text
 from sqlalchemy.orm import Mapped, mapped_column
 from .db import Base
 
@@ -40,9 +40,19 @@ class ProfessionalSpecialty(Base):
     professional_id: Mapped[int] = mapped_column(primary_key=True)
     specialty_id: Mapped[int] = mapped_column(primary_key=True)
 
+class Identity(Base):
+    __tablename__ = "identities"
+    __table_args__ = (Index("uq_identity_login_email", "email", unique=True, postgresql_where=text("login_enabled")),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(254), index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    login_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
 class User(Tenant, Base):
     __tablename__ = "users"
-    __table_args__ = (UniqueConstraint("business_id", "email"), UniqueConstraint("business_id", "id"), UniqueConstraint("business_id", "professional_id"), ForeignKeyConstraint(["business_id", "professional_id"], ["professionals.business_id", "professionals.id"]), CheckConstraint("(role = 'gestor' and professional_id is null) or (role = 'profissional' and professional_id is not null)"))
+    __table_args__ = (UniqueConstraint("identity_id", "id", name="uq_user_identity_id"), UniqueConstraint("identity_id", "business_id", name="uq_identity_business"), UniqueConstraint("business_id", "email"), UniqueConstraint("business_id", "id"), UniqueConstraint("business_id", "professional_id"), ForeignKeyConstraint(["business_id", "professional_id"], ["professionals.business_id", "professionals.id"]), CheckConstraint("(role = 'gestor' and professional_id is null) or (role = 'profissional' and professional_id is not null)"))
+    identity_id: Mapped[int] = mapped_column(ForeignKey("identities.id"), index=True)
+    # Credential mirrors retained for migration rollback; Identity owns authentication.
     email: Mapped[str] = mapped_column(String(254))
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(20))
@@ -52,7 +62,9 @@ class User(Tenant, Base):
 class AuthSession(Base):
     __tablename__ = "auth_sessions"
     token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    __table_args__ = (ForeignKeyConstraint(["identity_id", "user_id"], ["users.identity_id", "users.id"], name="fk_session_membership_identity"),)
+    identity_id: Mapped[int] = mapped_column(ForeignKey("identities.id"))
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     csrf_token: Mapped[str] = mapped_column(String(100))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

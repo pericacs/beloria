@@ -20,7 +20,7 @@ async def response_security(request: Request, call_next):
 
 @app.exception_handler(IntegrityError)
 async def conflict(request: Request, exc: IntegrityError):
-    return JSONResponse(status_code=409, content={"detail": "Conflito de cadastro ou operaÃ§Ã£o jÃ¡ registrada. Confira os dados."})
+    return JSONResponse(status_code=409, content={"detail": "Conflito de cadastro ou operação já registrada. Confira os dados."})
 
 @app.get("/api/health")
 def health():

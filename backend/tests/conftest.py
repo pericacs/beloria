@@ -17,6 +17,7 @@ from app.main import app
 from app.db import SessionLocal, engine
 from app.auth import hasher
 from app.models import Business, User
+from app.accounts import create_identity, membership
 
 @pytest.fixture(scope='session', autouse=True)
 def migrated():
@@ -27,7 +28,7 @@ def migrated():
 @pytest.fixture(autouse=True)
 def clean(migrated):
     with engine.begin() as connection:
-        connection.execute(text('TRUNCATE businesses, login_throttles RESTART IDENTITY CASCADE'))
+        connection.execute(text('TRUNCATE businesses, identities, login_throttles RESTART IDENTITY CASCADE'))
 
 @pytest.fixture
 def setup():
@@ -37,10 +38,13 @@ def setup():
             business = Business(slug=slug, name=slug.title())
             db.add(business)
             db.flush()
-            db.add(User(business_id=business.id, email='gestor@example.com', password_hash=hasher.hash(password), role='gestor'))
+            account = create_identity(db, 'gestor@example.com' if slug == 'alpha' else 'gestor-beta@example.com', password)
+            membership(db, account, business.id)
     def login(business='alpha', email='gestor@example.com', secret=password):
         client = TestClient(app)
-        response = client.post('/api/auth/login', json={'business':business,'email':email,'password':secret})
+        if business == 'beta' and email == 'gestor@example.com':
+            email = 'gestor-beta@example.com'
+        response = client.post('/api/auth/login', json={'email':email,'password':secret})
         assert response.status_code == 200, response.text
         client.headers['X-CSRF-Token'] = response.json()['csrf_token']
         return client
@@ -53,7 +57,7 @@ def create(client, path, payload):
 
 def seed(client, password, suffix=''):
     specialty = create(client, 'specialties', {'name':'Cabelo'+suffix})
-    professional = create(client,'professionals',{'name':'Ana'+suffix,'contact':'','commission_bps':3333,'engagement':'autonomo','cpf':'52998224725','specialty_ids':[specialty['id']],'email':f'ana{suffix}@example.com','password':password})
+    professional = create(client,'professionals',{'name':'Ana'+suffix,'contact':'','commission_bps':3333,'engagement':'autonomo','cpf':'52998224725','specialty_ids':[specialty['id']],'email':f'ana{suffix}{"-beta" if client.get("/api/auth/me").json()["business_name"] == "Beta" else ""}@example.com','password':password})
     service = create(client,'services',{'name':'Corte'+suffix,'specialty_id':specialty['id'],'price_cents':1001})
     return specialty,professional,service
 

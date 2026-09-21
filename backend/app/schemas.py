@@ -6,7 +6,6 @@ class Input(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 class LoginInput(Input):
-    business: str = Field(min_length=1, max_length=80)
     email: EmailStr
     password: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=128)
 
@@ -40,13 +39,13 @@ class ProfessionalInput(ClientInput):
     @model_validator(mode="after")
     def documents(self):
         if self.cpf and not valid_cpf(self.cpf):
-            raise ValueError("CPF invÃ¡lido")
+            raise ValueError("CPF inválido")
         if self.cnpj and not valid_cnpj(self.cnpj):
-            raise ValueError("CNPJ invÃ¡lido")
+            raise ValueError("CNPJ inválido")
         if self.engagement == "MEI" and not self.cnpj:
-            raise ValueError("CNPJ obrigatÃ³rio para MEI")
+            raise ValueError("CNPJ obrigatório para MEI")
         if self.engagement != "MEI" and not self.cpf:
-            raise ValueError("CPF obrigatÃ³rio para autÃ´nomo ou CLT")
+            raise ValueError("CPF obrigatório para autônomo ou CLT")
         self.specialty_ids = sorted(set(self.specialty_ids))
         return self
 
@@ -63,9 +62,12 @@ class ReviewInput(Input):
     @model_validator(mode="after")
     def reason_required(self):
         if self.decision == "rejected" and not self.reason:
-            raise ValueError("Informe o motivo da rejeiÃ§Ã£o")
+            raise ValueError("Informe o motivo da rejeição")
         return self
 
 class PayoutInput(Input):
     attendance_ids: list[int] = Field(min_length=1, max_length=200)
     reference: str = Field(min_length=1, max_length=200)
+
+class SelectBusinessInput(Input):
+    membership_id: int = Field(gt=0)
