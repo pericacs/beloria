@@ -179,3 +179,14 @@ def test_password_whitespace_is_preserved():
     assert LoginInput(business='alpha',email='x@example.com',password=secret).password==secret
     professional=ProfessionalInput(name='Ana',commission_bps=0,engagement='autonomo',cpf='52998224725',specialty_ids=[1],email='ana@example.com',password=secret)
     assert professional.password==secret
+
+def test_administrative_command_creates_manager_without_default_password(monkeypatch):
+    import sys
+    from app.cli import main
+    secret=secrets.token_urlsafe(24)
+    monkeypatch.setattr(sys,'argv',['beloria','--business','cli-business','--name','Negócio CLI','--email','admin@example.com'])
+    monkeypatch.setattr('getpass.getpass',lambda prompt:secret)
+    main()
+    response=TestClient(app).post('/api/auth/login',json={'business':'cli-business','email':'admin@example.com','password':secret})
+    assert response.status_code==200
+    assert response.json()['role']=='gestor'

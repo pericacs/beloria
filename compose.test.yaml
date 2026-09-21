@@ -1,0 +1,25 @@
+services:
+  test-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: beloria
+      POSTGRES_DB: beloria_test
+      POSTGRES_HOST_AUTH_METHOD: trust
+    # Disposable database, no published port and no persisted volume.
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beloria -d beloria_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+  tests:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://beloria@test-db:5432/beloria_test
+      TEST_DATABASE_URL: postgresql+psycopg://beloria@test-db:5432/beloria_test
+      COOKIE_SECURE: "false"
+    depends_on:
+      test-db:
+        condition: service_healthy
+    command: python -m pytest -q
