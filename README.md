@@ -1,6 +1,93 @@
 # Beloria
 
-SaaS de gestão operacional e financeira para negócios de beleza. MVP sem agendamento e sem inteligência artificial. Cada negócio tem seus próprios usuários e dados; os perfis são gestor e profissional.
+SaaS de gestão operacional e financeira para negócios de beleza. MVP sem agendamento e sem inteligência artificial. Cada negócio tem seus próprios usuários e dados; há administração da plataforma, gestão da empresa e painel pessoal do especialista.
+
+## Acesso local e os três painéis
+
+Nesta máquina, o ambiente sem Docker usa PostgreSQL 16 portátil em `127.0.0.1:55434`, banco **beloria_dev**, backend em `127.0.0.1:8001` e frontend em **http://127.0.0.1:5174**. Os bancos descartáveis de testes ficam em outro servidor, porta 55433. As configurações/credenciais existentes ficam somente em `.local/dev/config.json`, ignorado pelo Git.
+
+| Acesso | URL local | Quem pode usar |
+| --- | --- | --- |
+| Login | http://127.0.0.1:5174/login | E-mail e senha; destino determinado pelo backend |
+| Cadastro público | http://127.0.0.1:5174/cadastro | Responsável pela nova empresa |
+| Painel Beloria | http://127.0.0.1:5174/beloria | Administrador da plataforma |
+| Painel cliente | http://127.0.0.1:5174/empresa | Gestor vinculado |
+| Painel especialista | http://127.0.0.1:5174/especialista | Especialista aprovado |
+
+Digitar uma URL não concede privilégios. Depois do login, a sessão define o painel permitido. O nome do responsável é o novo campo obrigatório do cadastro público; contato é opcional. Não se solicita tipo de negócio, slug ou código.
+
+Executores locais já preparados nesta máquina, na raiz do repositório:
+
+```powershell
+# Inicia PostgreSQL portátil, aplica migrações com backend parado e inicia os dois servidores.
+.\.venv\Scripts\python.exe .local/dev/manage.py start
+# Para somente os processos deste ambiente e seu PostgreSQL, preservando dados.
+.\.venv\Scripts\python.exe .local/dev/manage.py stop
+# Cria seu administrador da plataforma com prompts de e-mail e senha no terminal.
+.\.venv\Scripts\python.exe .local/dev/platform-admin.py
+```
+
+Esses executores/configurações são locais, não versionados. Para outra máquina, use a instalação sem containers descrita adiante. Clientes não precisam executar nenhum desses comandos: basta abrir `/cadastro`.
+
+## Administrador da plataforma
+
+Não existe administrador padrão. Com o backend instalado, migrações aplicadas e `DATABASE_URL` apontando para o banco desejado, execute em `backend/`:
+
+```powershell
+..\.venv\Scripts\python.exe -m app.platform_cli
+```
+
+O terminal solicita e-mail e senha com confirmação oculta. Cria uma identidade exclusiva com permissão `PlatformAdmin`, sem empresa cliente. Um e-mail existente é recusado: o procedimento não promove gestores nem une contas. O cadastro público nunca atribui essa permissão. Entre pelo login comum para chegar ao Painel Beloria.
+
+O painel mostra empresas, início/fim do trial, validade de assinatura, cobranças, conflitos de vínculos e histórico da plataforma. Bloquear/desbloquear manualmente exige motivo auditado; remover bloqueio **não renova trial e não confirma pagamento**. Não dá acesso aos dados operacionais das empresas.
+
+## Convites e aprovação
+
+1. Gestor abre **Convites e aprovações** e **Gerar convite**. O link da interface vale 7 dias; a API aceita 1 a 30 dias. O token aleatório é mostrado somente na criação e seu hash é armazenado.
+2. Use **Copiar link** ou **Compartilhar pelo WhatsApp**. O WhatsApp é aberto para envio manual; nada é enviado automaticamente. O gestor pode revogar o convite.
+3. Abra o link em outro perfil/janela privada. O nome da empresa aparece automaticamente. Cadastre o especialista ou use **Já tenho conta — entrar** antes de solicitar o vínculo.
+4. O especialista vê apenas **Aguardando aprovação**. Gestor analisa documentos, define especialidades e comissão, e aprova/rejeita. Rejeição exige motivo. A aprovação de vínculo é independente da aprovação de atendimentos.
+5. Após aprovação, **Atualizar situação** ou a atualização automática libera o painel próprio. Um convite de outra empresa não transfere vínculo. Reservas e bloqueios transacionais impedem duas solicitações/vínculos simultâneos; vínculos inativos também impedem transferência implícita.
+
+## Trial, assinatura e integração pendente
+
+Cadastros novos recebem exatamente 15 dias calculados no backend, sem cartão. Repetição do cadastro com o mesmo e-mail falha sem renovar prazo. No vencimento, endpoints operacionais retornam 402 mesmo para sessões abertas: gestor vai para `/empresa/assinatura`; especialista vê “Acesso suspenso. Entre em contato com o responsável pela empresa.” Autenticação/logout continuam disponíveis; somente o gestor consulta a própria cobrança.
+
+**Cobrança real indisponível.** Ainda faltam preço, planos, periodicidade, provedor, credenciais, configuração de webhook e regras de inadimplência/renovação/cancelamento após contratação. A interface informa essa situação e não apresenta botão falso de pagamento. Nenhuma cobrança real é criada nesta entrega.
+
+`payment_provider.py` define o contrato do adaptador. Uma integração futura deve autenticar o evento, verificar liquidação com o provedor e retornar período pago confiável. O backend confere referência, valor/moeda e datas, registra eventos idempotentes e atualiza a assinatura apenas após confirmação. Criar checkout, receber retorno do navegador ou ter cobrança pendente nunca libera acesso. Bloqueio administrativo permanece soberano. Testes usam um adaptador HMAC controlado, exclusivamente dentro da suíte; o aplicativo não contém modo de pagamento fictício.
+
+### Migração comercial e contas anteriores
+
+Antes da atualização, pare os serviços, faça backup verificado e execute em `backend/`:
+
+```powershell
+..\.venv\Scripts\python.exe -m app.commercial_preflight
+..\.venv\Scripts\python.exe -m alembic upgrade head
+```
+
+A migração `3be600b16a15` é aditiva. Empresas anteriores mantêm acesso legado identificado como **Legado — revisar contratação**, com datas de trial nulas: não recebem trial novo. O proprietário precisa revisar a contratação individualmente, definir condições reais e, se necessário, aplicar bloqueio manual. Empresas criadas depois da migração não herdam acesso legado.
+
+Identidades com um vínculo de profissional e mais de uma empresa são marcadas para revisão; todos os vínculos e históricos permanecem, mas o acesso operacional dessa identidade é bloqueado. O painel lista os vínculos preservados. A regularização exige decisão administrativa individual e plano de migração específico: não há transferência automática, exclusão de histórico ou escolha do primeiro vínculo. Duplicidades de e-mail continuam separadas, com o tratamento da seção de autenticação abaixo. Gestores antigos nunca viram administradores da plataforma.
+
+O downgrade comercial recusa perda de novos dados de contratação, trial, convites, auditoria ou pagamento. Após uso dessas funções, restaure somente backup validado em ambiente separado ou aplique correção para frente; não tente contornar a proteção removendo dados.
+
+### Testar vencimento sem alterar dados reais
+
+Use um banco **descartável** `beloria_test...` e uma empresa sintética recém-cadastrada. O auxiliar abaixo recusa outros nomes/hosts e altera somente a empresa indicada; nunca use `beloria_dev`:
+
+```powershell
+$env:E2E_DATABASE_URL='postgresql+psycopg://USUARIO:SENHA@127.0.0.1:55433/beloria_test_commercial_ui'
+.\.venv\Scripts\python.exe backend/tests/expire_e2e_trial.py 'NOME EXATO DA EMPRESA SINTETICA'
+```
+
+Mantenha sessões do gestor e especialista abertas e navegue para Atendimentos: o primeiro recebe a tela de assinatura, o segundo a suspensão. Nenhum registro operacional é apagado. A confirmação controlada de pagamento é testada pela suíte PostgreSQL, sem endpoint de simulação público.
+
+### Verificações comerciais
+
+A suíte PostgreSQL inclui cadastro sem privilégios, três destinos de login, convites válidos/expirados/revogados, pendência, aprovação/rejeição isolada, vínculos concorrentes, expiração com sessão aberta, pagamento pendente, assinatura de evento, idempotência e preservação de migração/histórico. Os testes operacionais anteriores de atendimento, comissão e repasse permanecem.
+
+`frontend/commercial-e2e.mjs` testa cadastro, convites, aprovação, painéis desktop/mobile e vencimento em banco descartável. Requer `E2E_BASE_URL` local, `E2E_DATABASE_URL`, `E2E_PYTHON` e `E2E_PLATFORM_CONFIG` apontando para JSON **ignorado pelo Git** contendo e-mail/senha de administrador sintético previamente criado no banco de testes. Execute `node commercial-e2e.mjs` em `frontend/`. O fluxo operacional anterior permanece em `frontend/e2e.mjs`; capturas ficam em `frontend/test-results/`, ignorado.
 
 ## Requisitos
 
@@ -19,11 +106,10 @@ $senhaBanco = [Convert]::ToHexString([System.Security.Cryptography.RandomNumberG
 (Get-Content .env -Raw).Replace('POSTGRES_PASSWORD=', "POSTGRES_PASSWORD=$senhaBanco") | Set-Content -Encoding utf8 .env
 docker compose up -d --build db backend
 docker compose exec backend python -m alembic upgrade head
-docker compose exec backend python -m app.cli --business meu-salao --name "Meu Salão" --email gestor@exemplo.com
 docker compose up -d web
 ```
 
-O comando administrativo solicita e confirma a senha do gestor interativamente (12 a 128 caracteres). Não existe senha padrão. No login, informe **somente e-mail e senha**. `--business` é usado apenas na administração interna do negócio, nunca como credencial.
+Clientes criam sua empresa em **Criar conta**, pelo navegador, sem comandos administrativos. Senhas têm 12 a 128 caracteres; não há senha padrão. Login pede **somente e-mail e senha**.
 
 Acesse **http://localhost:8080**. Saúde da API: **http://localhost:8080/api/health**. A documentação interativa está em **http://127.0.0.1:8000/docs** no desenvolvimento sem containers; o Nginx não a expõe.
 
@@ -34,7 +120,6 @@ cp .env.example .env
 python3 -c 'import pathlib,secrets; p=pathlib.Path(".env"); p.write_text(p.read_text().replace("POSTGRES_PASSWORD=", "POSTGRES_PASSWORD="+secrets.token_hex(24)))'
 docker compose up -d --build db backend
 docker compose exec backend python -m alembic upgrade head
-docker compose exec backend python -m app.cli --business meu-salao --name "Meu Salão" --email gestor@exemplo.com
 docker compose up -d web
 ```
 
@@ -42,7 +127,7 @@ Não execute novamente o gerador de senha sobre um `.env` já configurado. `POST
 
 ## Login, vínculos e atualização de instalações existentes
 
-Uma identidade pode ter vários vínculos explícitos. Um vínculo ativo entra diretamente; vários exibem **Escolha seu negócio**, com nomes e papéis, antes de liberar os dados. No painel, **Trocar negócio** permite selecionar outro vínculo autorizado. Slug, código e tipo de negócio não participam do login nem da definição de permissões.
+Uma identidade de gestor pode ter vários vínculos explícitos. Especialistas ficam restritos a uma única empresa, inclusive quando o vínculo em outra empresa seria de gestor. Um vínculo ativo entra diretamente; vários exibem **Escolha seu negócio**, com nomes e papéis, antes de liberar os dados. No painel, **Trocar negócio** permite selecionar outro vínculo autorizado. Slug, código e tipo de negócio não participam do login nem da definição de permissões.
 
 A migração `e71f_identity_memberships` cria **uma identidade por conta antiga**, preservando IDs de usuários/vínculos, hashes de senha, profissionais, auditoria e registros financeiros. E-mails são normalizados para minúsculas, sem espaços nas extremidades. Contas que colidem após normalização permanecem separadas e com login bloqueado, mesmo quando as senhas coincidem. A resposta pública é genérica, sem revelar negócios ou contas. Contas sem conflito continuam entrando com a senha anterior.
 
@@ -80,12 +165,12 @@ Execute apenas o comando adequado ao caso: o mesmo vínculo não pode ser criado
 
 O gestor de um negócio não pode alterar e-mail/senha de uma identidade compartilhada com outros negócios nem desbloquear identidades conflitantes. Pode editar os dados e ativar/desativar o vínculo do seu próprio negócio. Os endpoints continuam validando sessão, negócio e papel em cada requisição; uma sessão aguardando seleção não acessa cadastros, financeiro ou dashboard.
 
-Rollback: com os serviços parados, execute `python -m alembic downgrade ddd468014c2d` usando o código novo e só depois restaure a versão anterior de backend/frontend. As colunas legadas de credenciais são mantidas sincronizadas para isso. Sessões são revogadas novamente; contas por negócio e histórico permanecem. O agrupamento global dos vínculos não existe no schema antigo: uma nova migração volta a tratar cada conta separadamente e bloqueia duplicidades para regularização. Não faça downgrade se precisar manter esse agrupamento; restaure o backup validado ou corrija para frente.
+Rollback da migração antiga de identidade, somente se a migração comercial puder ser revertida sem perda (veja abaixo): com os serviços parados, execute `python -m alembic downgrade ddd468014c2d` usando o código novo e só depois restaure a versão anterior de backend/frontend. As colunas legadas de credenciais são mantidas sincronizadas para isso. Sessões são revogadas novamente; contas por negócio e histórico permanecem. O agrupamento global dos vínculos não existe no schema antigo: uma nova migração volta a tratar cada conta separadamente e bloqueia duplicidades para regularização. Não faça downgrade se precisar manter esse agrupamento; restaure o backup validado ou corrija para frente.
 
 ## Primeiro fluxo
 
-1. Entre como gestor; cadastre uma especialidade.
-2. Cadastre um profissional: contato, vínculo, documento, especialidades, comissão e credenciais individuais.
+1. Em **Criar conta**, cadastre empresa, responsável, e-mail e senha. O trial de 15 dias começa no servidor. Entre e cadastre uma especialidade.
+2. Em **Convites e aprovações**, gere e compartilhe um convite. O especialista preenche os dados e cria sua própria senha; o gestor analisa, define especialidades/comissão e aprova o vínculo. O cadastro administrativo direto de profissionais permanece disponível.
 3. Cadastre um serviço vinculado à especialidade e seu preço. Clientes são opcionais.
 4. Entre como profissional e registre um atendimento, com cliente cadastrado ou avulso.
 5. Entre como gestor; aprove ou rejeite em **Atendimentos** (motivo obrigatório na rejeição).
@@ -105,7 +190,6 @@ $env:DATABASE_URL='postgresql+psycopg://USUARIO:SENHA@127.0.0.1:5432/beloria_dev
 $env:COOKIE_SECURE='false'
 Set-Location backend
 ..\.venv\Scripts\python.exe -m alembic upgrade head
-..\.venv\Scripts\python.exe -m app.cli --business meu-salao --name "Meu Salão" --email gestor@exemplo.com
 ..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 

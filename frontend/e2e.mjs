@@ -28,7 +28,13 @@ async function login(email = config.email) {
   await page.getByLabel("Senha", { exact: true }).fill(config.password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await page
-    .getByRole("heading", { name: "Visão geral", exact: true })
+    .getByRole("heading", {
+      name:
+        email === config.email
+          ? "Visão geral"
+          : "Seu trabalho, seus resultados.",
+      exact: true,
+    })
     .waitFor();
 }
 async function save() {

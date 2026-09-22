@@ -21,6 +21,8 @@ export async function api<T>(
   });
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
+    if (response.status === 402)
+      window.dispatchEvent(new Event("access-changed"));
     if (response.status === 401 && path !== "/auth/login")
       window.dispatchEvent(new Event("session-expired"));
     const detail = Array.isArray(data.detail)

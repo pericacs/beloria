@@ -11,11 +11,23 @@ export type Selection = {
 };
 export type AuthResult = User | Selection;
 export type User = {
+  destination:
+    | "platform"
+    | "client"
+    | "specialist"
+    | "waiting"
+    | "payment"
+    | "suspended"
+    | "conflict";
+  access_state?: string;
+  trial_ends_at?: string | null;
+  request_state?: string;
+  rejection_reason?: string | null;
   selection_required: false;
   businesses: BusinessChoice[];
   id: number;
   email: string;
-  role: "gestor" | "profissional";
+  role: "gestor" | "profissional" | "platform";
   professional_id: number | null;
   business_name: string;
   csrf_token: string;

@@ -1175,3 +1175,366 @@ dialog::backdrop {
   font-size: 11px;
   text-decoration: underline;
 }
+/* Commercial entry points and distinct platform/specialist workspaces. */
+.wordmark {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -1.5px;
+  color: #164333;
+  text-decoration: none;
+}
+.signup-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.signup-story {
+  padding: 65px;
+  background: #153f32;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: #fff;
+}
+.signup-story .wordmark {
+  color: #e3edd7;
+  margin-bottom: 65px;
+}
+.signup-story h1 {
+  font-size: 52px;
+  line-height: 1.17;
+  font-family: Georgia, serif;
+  font-weight: 400;
+}
+.signup-story em {
+  color: #c8ddb3;
+}
+.signup-story > p {
+  color: #b3cbb9;
+  max-width: 370px;
+  line-height: 1.9;
+}
+.trial-note {
+  display: grid;
+  gap: 9px;
+  border-top: 1px solid #527261;
+  margin-top: 24px;
+  padding-top: 25px;
+}
+.trial-note span {
+  font-size: 12px;
+  color: #b3cbb9;
+}
+.signup-form {
+  padding: 55px clamp(24px, 5vw, 90px);
+  max-width: 660px;
+  align-self: center;
+  width: 100%;
+}
+.signup-form h2 {
+  font-size: 27px;
+}
+.signup-form > p {
+  font-size: 12px;
+}
+.signup-form .primary {
+  width: 100%;
+}
+.login-tab,
+.login-box .tabs a {
+  padding: 12px 16px;
+  display: block;
+}
+.login-tab {
+  border-bottom: 2px solid #285c40;
+}
+.login-box .tabs a {
+  text-decoration: none;
+  color: #285c40;
+  font-weight: 600;
+}
+.invite-page {
+  padding: 32px 18px;
+  max-width: 600px;
+  margin: auto;
+}
+.invite-page > .panel {
+  padding: 30px;
+}
+.invite-page .wordmark {
+  display: block;
+  margin-bottom: 30px;
+}
+.invite-page form {
+  margin-top: 26px;
+}
+.invite-login-note {
+  padding: 12px 20px;
+  background: #e7efdf;
+  color: #315739;
+  text-align: center;
+}
+.invite-share,
+.billing-status {
+  padding: 24px;
+}
+.invite-share input {
+  font-size: 12px;
+}
+.button-link {
+  display: inline-flex;
+  padding: 10px 15px;
+  background: #e6efdf;
+  border-radius: 8px;
+  color: #305c3d;
+  text-decoration: none;
+  font-weight: 600;
+}
+.access-screen {
+  max-width: 1020px;
+  padding: 35px 24px;
+  margin: auto;
+}
+.access-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+}
+.access-message {
+  padding: 45px;
+  max-width: 760px;
+  margin: 60px auto;
+}
+.access-message p {
+  line-height: 1.9;
+}
+.platform-header {
+  background: #143d32;
+  color: #dce9dc;
+  padding: 24px 5vw;
+  display: flex;
+  align-items: center;
+  gap: 25px;
+}
+.platform-header .wordmark {
+  color: #fff;
+}
+.platform-header > span {
+  font-size: 12px;
+}
+.platform-header > button {
+  margin-left: auto;
+}
+.platform-main {
+  max-width: 1450px;
+  margin: auto;
+  padding: 40px 5vw;
+}
+.platform-notice {
+  padding: 16px 20px;
+  border: 1px solid #e8dfc4;
+  background: #faf6e8;
+  color: #877340;
+  border-radius: 10px;
+  margin-bottom: 24px;
+  font-size: 12px;
+}
+.specialist-shell {
+  background: #f5f7f3;
+  min-height: 100vh;
+  padding-bottom: 105px;
+}
+.specialist-header {
+  height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1100px;
+  margin: auto;
+  padding: 0 28px;
+  border-bottom: 1px solid #e2e8df;
+}
+.specialist-header small {
+  display: block;
+  font-size: 11px;
+}
+.specialist-account {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #69816b;
+  font-size: 12px;
+}
+.specialist-content {
+  max-width: 1100px;
+  margin: auto;
+  padding: 38px 28px;
+}
+.specialist-greeting h1 {
+  font-size: 29px;
+}
+.specialist-greeting > p {
+  font-size: 12px;
+}
+.specialist-action {
+  background: #174b39;
+  color: #e9f1e1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  border-radius: 16px;
+  padding: 28px;
+  margin: 25px 0;
+}
+.specialist-action h2 {
+  font-size: 24px;
+}
+.specialist-action p {
+  color: #acc6af;
+  font-size: 12px;
+  margin: 8px 0;
+}
+.specialist-action .eyebrow {
+  color: #b6d298;
+  font-size: 10px;
+}
+.specialist-action button {
+  background: #d2e4b5;
+  color: #214c35;
+  padding: 14px 19px;
+  white-space: nowrap;
+}
+.specialist-metrics .metric > span {
+  font-size: 11px;
+  color: #6e836e;
+}
+.specialist-metrics .metric > strong {
+  margin-top: 14px;
+}
+.specialist-nav {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: space-around;
+  gap: 10px;
+  max-width: 540px;
+  width: calc(100% - 28px);
+  background: #fff;
+  border: 1px solid #dce6d6;
+  border-radius: 18px;
+  padding: 9px;
+  box-shadow: 0 10px 30px #163b3210;
+  z-index: 15;
+}
+.specialist-nav button {
+  background: transparent;
+  flex-direction: column;
+  color: #80907b;
+  font-size: 10px;
+  padding: 10px 16px;
+  flex: 1;
+  gap: 4px;
+}
+.specialist-nav button.active {
+  background: #eaf1e0;
+  color: #2e583d;
+}
+.sidebar nav {
+  overflow-y: auto;
+  min-height: 0;
+}
+.sidebar-bottom {
+  flex-shrink: 0;
+}
+@media (max-width: 700px) {
+  .signup-page {
+    display: block;
+  }
+  .signup-story {
+    padding: 28px;
+  }
+  .signup-story .wordmark {
+    margin-bottom: 18px;
+  }
+  .signup-story h1 {
+    font-size: 32px;
+  }
+  .signup-story > p:not(.eyebrow) {
+    display: none;
+  }
+  .trial-note {
+    margin-top: 10px;
+    padding-top: 14px;
+  }
+  .signup-form {
+    padding: 28px 24px;
+  }
+  .platform-header {
+    padding: 20px;
+    gap: 14px;
+  }
+  .platform-header > span {
+    max-width: 130px;
+    font-size: 10px;
+  }
+  .platform-main {
+    padding: 28px 16px;
+  }
+  .platform-main h1 {
+    font-size: 27px;
+  }
+  .invite-page > .panel {
+    padding: 23px;
+  }
+  .access-message {
+    padding: 28px;
+    margin-top: 25px;
+  }
+  .specialist-header {
+    padding: 0 20px;
+    height: 78px;
+  }
+  .specialist-content {
+    padding: 28px 16px;
+  }
+  .specialist-greeting h1 {
+    font-size: 26px;
+  }
+  .specialist-action {
+    padding: 23px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .specialist-action h2 {
+    font-size: 21px;
+  }
+  .specialist-action button {
+    width: 100%;
+    font-size: 12px;
+  }
+  .specialist-nav {
+    bottom: 10px;
+    gap: 0;
+  }
+  .specialist-nav button {
+    padding: 9px 4px;
+    font-size: 10px;
+  }
+  .specialist-metrics .metric > span {
+    font-size: 12px;
+  }
+  .row-actions {
+    flex-wrap: wrap;
+  }
+  .button-link {
+    font-size: 12px;
+  }
+  .access-screen {
+    padding: 24px 16px;
+  }
+}

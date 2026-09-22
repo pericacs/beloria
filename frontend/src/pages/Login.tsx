@@ -57,6 +57,10 @@ export function Login({ loggedIn }: { loggedIn: (user: AuthResult) => void }) {
           </span>
           <h2>Bem-vindo ao Beloria</h2>
           <p>Entre para acompanhar o seu negócio.</p>
+          <div className="tabs">
+            <span className="login-tab">Entrar</span>
+            <a href="/cadastro">Criar conta</a>
+          </div>
           <form onSubmit={submit}>
             <Message error={error} />
             <label>
