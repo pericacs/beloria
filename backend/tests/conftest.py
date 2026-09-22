@@ -35,7 +35,7 @@ def setup():
     password = secrets.token_urlsafe(20)
     with SessionLocal.begin() as db:
         for slug in ('alpha', 'beta'):
-            business = Business(slug=slug, name=slug.title())
+            business = Business(slug=slug, name=slug.title(), legacy_access=True)
             db.add(business)
             db.flush()
             account = create_identity(db, 'gestor@example.com' if slug == 'alpha' else 'gestor-beta@example.com', password)

@@ -3,11 +3,11 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-from . import auth, catalog, finance, reporting
+from . import auth, catalog, finance, reporting, onboarding, billing, platform
 from .db import engine
 
 app = FastAPI(title="Beloria", version="0.1.0")
-for router in (auth.router, catalog.router, finance.router, reporting.router):
+for router in (auth.router, catalog.router, finance.router, reporting.router, onboarding.router, billing.router, platform.router):
     app.include_router(router, prefix="/api")
 
 @app.middleware("http")

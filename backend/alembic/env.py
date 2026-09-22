@@ -1,6 +1,6 @@
 from alembic import context
 from app.db import Base, engine
-from app import models
+from app import models, commercial_models
 
 if context.is_offline_mode():
     context.configure(url=str(engine.url), target_metadata=Base.metadata, literal_binds=True)

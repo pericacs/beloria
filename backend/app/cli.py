@@ -1,4 +1,5 @@
 import argparse
+from datetime import timedelta
 import getpass
 import re
 from fastapi import HTTPException
@@ -8,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from .accounts import change_credentials, create_identity, membership
 from .common import audit
 from .db import SessionLocal
-from .models import Business, Identity, Professional, User
+from .models import Business, Identity, Professional, User, now
 
 
 def main():
@@ -51,7 +52,8 @@ def main():
             else:
                 if not args.business or not re.fullmatch(r'[a-z0-9][a-z0-9-]{1,79}', args.business) or not args.name or not 1 <= len(args.name.strip()) <= 160:
                     parser.error('Informe --business e --name válidos para criar o negócio')
-                business = Business(slug=args.business, name=args.name.strip())
+                start = now()
+                business = Business(slug=args.business, name=args.name.strip(), trial_started_at=start, trial_ends_at=start+timedelta(days=15))
                 db.add(business)
                 db.flush()
             if account:

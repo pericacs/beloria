@@ -71,30 +71,18 @@ def test_unauthorized_selection_never_changes_scope(setup):
     assert setup['beta'].get('/api/clients').json()['total'] == 0
 
 
-def test_roles_and_professional_scope_follow_selected_membership(seeded):
-    # Explicit administrative attachment, never based on matching email.
-    with SessionLocal.begin() as db:
+def test_specialist_cannot_gain_second_company_even_as_manager(seeded):
+    from sqlalchemy.exc import IntegrityError
+    with pytest.raises(IntegrityError), SessionLocal.begin() as db:
         pro = db.scalar(select(User).where(User.professional_id == seeded['professional']['id']))
-        identity = db.get(Identity,pro.identity_id)
         beta = db.scalar(select(Business).where(Business.slug == 'beta'))
-        second = membership(db,identity,beta.id)
-        manager_id, professional_id = second.id, pro.id
-    client,response = login('ana@example.com',seeded['password'])
-    assert response.json()['selection_required'] is True
-    response=client.post('/api/auth/select-business',json={'membership_id':manager_id})
-    client.headers['X-CSRF-Token']=response.json()['csrf_token']
-    assert response.json()['role']=='gestor'
-    assert client.post('/api/clients',json={'name':'Beta client'}).status_code==201
-    response=client.post('/api/auth/select-business',json={'membership_id':professional_id})
-    client.headers['X-CSRF-Token']=response.json()['csrf_token']
-    assert response.json()['role']=='profissional'
-    assert client.post('/api/clients',json={'name':'Forbidden'}).status_code==403
-    assert client.get('/api/clients').json()['total']==0
-    assert client.get('/api/audit').status_code==403
-    p=seeded['professional']
-    body={key:p[key] for key in ('name','contact','commission_bps','engagement','cpf','cnpj','specialty_ids','email','active')}
-    assert seeded['alpha'].put(f"/api/professionals/{p['id']}",json={**body,'password':secrets.token_urlsafe(24)}).status_code==409
-    assert seeded['alpha'].put(f"/api/professionals/{p['id']}",json={**body,'contact':'new contact'}).status_code==200
+        membership(db, db.get(Identity, pro.identity_id), beta.id)
+    client, response = login('ana@example.com', seeded['password'])
+    assert response.json()['destination'] == 'specialist'
+    assert response.json()['selection_required'] is False
+    assert len(response.json()['businesses']) == 1
+    assert client.post('/api/clients', json={'name':'Forbidden'}).status_code == 403
+    assert client.get('/api/audit').status_code == 403
 
 
 def test_revoked_membership_cannot_be_selected(setup):

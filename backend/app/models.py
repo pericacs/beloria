@@ -11,6 +11,13 @@ class Business(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     slug: Mapped[str] = mapped_column(String(80), unique=True)
     name: Mapped[str] = mapped_column(String(160))
+    responsible_name: Mapped[str] = mapped_column(String(160), default="")
+    contact: Mapped[str] = mapped_column(String(160), default="")
+    legacy_access: Mapped[bool] = mapped_column(Boolean, default=False)
+    access_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
+    trial_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (CheckConstraint("(trial_started_at IS NULL AND trial_ends_at IS NULL) OR (trial_started_at IS NOT NULL AND trial_ends_at IS NOT NULL AND trial_ends_at > trial_started_at)", name="ck_trial_period"),)
 
 class Tenant:
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -47,6 +54,7 @@ class Identity(Base):
     email: Mapped[str] = mapped_column(String(254), index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     login_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    specialist_conflict: Mapped[bool] = mapped_column(Boolean, default=False)
 
 class User(Tenant, Base):
     __tablename__ = "users"

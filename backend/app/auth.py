@@ -10,6 +10,8 @@ from sqlalchemy.dialects.postgresql import insert
 from .db import get_db
 from .models import AuthSession, Business, Identity, LoginThrottle, Professional, User, now
 from .schemas import LoginInput, SelectBusinessInput
+from .commercial_models import PlatformAdmin, JoinRequest
+from .access import business_access
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 hasher = PasswordHasher()
@@ -42,13 +44,28 @@ def authenticated_session(request: Request, db=Depends(get_db)):
     return session
 
 
-def current_user(session=Depends(authenticated_session), db=Depends(get_db)):
+def selected_user(session=Depends(authenticated_session), db=Depends(get_db)):
+    if db.get(Identity, session.identity_id).specialist_conflict:
+        raise HTTPException(403, "Vínculos preexistentes em análise pelo administrador")
     if session.user_id is None:
         raise HTTPException(403, "Selecione um negócio autorizado para continuar")
     user = next((u for u in authorized_memberships(db, session.identity_id) if u.id == session.user_id), None)
     if user is None:
         raise HTTPException(401, "Vínculo desativado. Entre novamente.")
     return user
+
+
+def current_user(user=Depends(selected_user), db=Depends(get_db)):
+    access=business_access(db, db.get(Business,user.business_id))
+    if not access['allowed']:
+        raise HTTPException(402, "Pagamento necessário" if user.role=='gestor' else "Acesso suspenso. Entre em contato com o responsável pela empresa.")
+    return user
+
+
+def platform_admin(session=Depends(authenticated_session),db=Depends(get_db)):
+    if not db.get(PlatformAdmin,session.identity_id):
+        raise HTTPException(403,"Acesso exclusivo do administrador Beloria")
+    return db.get(Identity,session.identity_id)
 
 
 def manager(user=Depends(current_user)):
@@ -62,12 +79,24 @@ def session_view(session, db):
     memberships = authorized_memberships(db, account.id)
     choices = [{"membership_id": u.id, "name": db.get(Business, u.business_id).name, "role": u.role} for u in memberships]
     base = {"email": account.email, "csrf_token": session.csrf_token, "businesses": choices}
+    if db.get(PlatformAdmin, account.id):
+        return {**base, "selection_required":False, "destination":"platform", "role":"platform", "id":account.id}
+    if account.specialist_conflict:
+        return {**base, "selection_required":False, "destination":"conflict", "role":"profissional", "id":account.id}
     if session.user_id is None:
-        return {**base, "selection_required": True}
+        if memberships:
+            return {**base, "selection_required": True, "destination":"select"}
+        application=db.scalar(select(JoinRequest).where(JoinRequest.identity_id==account.id).order_by(JoinRequest.id.desc()).limit(1))
+        return {**base, "selection_required":False, "destination":"waiting", "role":"profissional", "id":account.id,
+                "request_state": application.status if application else "unlinked", "rejection_reason":application.rejection_reason if application else None}
     user = next((u for u in memberships if u.id == session.user_id), None)
     if user is None:
         raise HTTPException(401, "Vínculo desativado. Entre novamente.")
-    return {**base, "selection_required": False, "id": user.id, "role": user.role, "professional_id": user.professional_id, "business_name": db.get(Business, user.business_id).name}
+    business=db.get(Business,user.business_id)
+    access=business_access(db,business)
+    destination=('client' if user.role=='gestor' else 'specialist') if access['allowed'] else ('payment' if user.role=='gestor' else 'suspended')
+    return {**base, "selection_required": False, "id": user.id, "role": user.role, "professional_id": user.professional_id, "business_name": business.name,
+            "destination":destination,"access_state":access['state'],"trial_ends_at":business.trial_ends_at}
 
 
 def issue_session(db, response, account_id, user_id, hours=12):
@@ -99,7 +128,7 @@ def login(payload: LoginInput, request: Request, response: Response, db=Depends(
     except (VerificationError, InvalidHashError):
         valid = False
     memberships = authorized_memberships(db, account.id) if account and valid else []
-    if not valid or not account or not memberships:
+    if not valid or not account or (not memberships and not db.get(PlatformAdmin,account.id) and not db.scalar(select(JoinRequest.id).where(JoinRequest.identity_id==account.id).limit(1))):
         raise HTTPException(401, "E-mail ou senha inválidos, ou acesso indisponível. Se necessário, contate o administrador.")
     old_token = request.cookies.get(COOKIE)
     old = db.get(AuthSession, digest(old_token)) if old_token else None
@@ -125,6 +154,10 @@ def select_business(payload: SelectBusinessInput, response: Response, session=De
 
 @router.get("/me")
 def me(session=Depends(authenticated_session), db=Depends(get_db)):
+    memberships=authorized_memberships(db,session.identity_id)
+    if session.user_id is None and len(memberships)==1:
+        session.user_id=memberships[0].id
+        db.commit()
     return session_view(session, db)
 
 

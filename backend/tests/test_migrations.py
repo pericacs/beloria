@@ -49,3 +49,49 @@ def test_identity_migration_preserves_duplicate_accounts_and_financial_history()
             assert c.scalar(text('SELECT created_by FROM payouts WHERE id=901'))==901
     finally:
         command.upgrade(config,'head')
+
+def test_commercial_migration_preserves_and_flags_old_specialist_links():
+    import secrets
+    from app.auth import hasher
+    from fastapi.testclient import TestClient
+    from app.main import app
+    config=Config(str(Path(__file__).parents[1]/'alembic.ini'))
+    from alembic.script import ScriptDirectory
+    previous=ScriptDirectory.from_config(config).get_revision('3be600b16a15').down_revision
+    command.downgrade(config,previous)
+    password=secrets.token_urlsafe(24); encoded=hasher.hash(password)
+    with engine.begin() as c:
+        c.execute(text("INSERT INTO businesses(id,slug,name) VALUES(801,'legacy-a','Legacy A'),(802,'legacy-b','Legacy B')"))
+        c.execute(text("INSERT INTO identities(id,email,password_hash,login_enabled) VALUES(801,'legacy-specialist@example.com',:hash,true)"),{'hash':encoded})
+        c.execute(text("INSERT INTO professionals(id,business_id,name,contact,commission_bps,engagement,active) VALUES(801,801,'Legacy','',3500,'autonomo',true)"))
+        c.execute(text("INSERT INTO users(id,business_id,identity_id,email,password_hash,role,professional_id,active) VALUES(801,801,801,'legacy-specialist@example.com',:hash,'profissional',801,true),(802,802,801,'legacy-specialist@example.com',:hash,'gestor',null,true)"),{'hash':encoded})
+    try:
+        command.upgrade(config,'head')
+        with engine.connect() as c:
+            assert c.scalar(text('SELECT specialist_conflict FROM identities WHERE id=801')) is True
+            assert c.scalar(text('SELECT count(*) FROM users WHERE identity_id=801'))==2
+            assert c.scalar(text('SELECT count(*) FROM businesses WHERE legacy_access AND trial_started_at IS NULL AND trial_ends_at IS NULL'))==2
+            assert c.scalar(text('SELECT count(*) FROM platform_admins'))==0
+            assert c.scalar(text('SELECT count(*) FROM specialist_claims'))==0
+        client=TestClient(app)
+        response=client.post('/api/auth/login',json={'email':'legacy-specialist@example.com','password':password})
+        assert response.status_code==200
+        assert response.json()['destination']=='conflict'
+        assert client.get('/api/dashboard').status_code==403
+    finally:
+        command.upgrade(config,'head')
+
+
+def test_commercial_downgrade_refuses_loss_of_new_history():
+    from app.commercial_models import PlatformAudit
+    from app.db import SessionLocal
+    from alembic.script import ScriptDirectory
+    config=Config(str(Path(__file__).parents[1]/'alembic.ini'))
+    with SessionLocal.begin() as db:
+        db.add(PlatformAudit(action='preserve',details={}))
+    previous=ScriptDirectory.from_config(config).get_revision('3be600b16a15').down_revision
+    import pytest
+    with pytest.raises(RuntimeError,match='Commercial data exists'):
+        command.downgrade(config,previous)
+    with engine.connect() as c:
+        assert c.scalar(text("SELECT count(*) FROM platform_audit WHERE action='preserve'"))==1
